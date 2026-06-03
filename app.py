@@ -4,17 +4,62 @@ import io
 import re
 import sys
 import os
+import threading
+from contextlib import redirect_stdout
 from ansi2html import Ansi2HTMLConverter
 
 # Ensure the local vendored primerize package takes import precedence
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 import primerize
 
-import threading
-from contextlib import redirect_stdout
-
 # Global thread lock to prevent Singleton race conditions in the primerize backend
 primerize_lock = threading.Lock()
+
+def strip_ansi(text):
+    """Removes ANSI escape sequences from text for clean raw file downloads."""
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    return re.sub(ansi_escape, '', text)
+
+def generate_advanced_files(job, include_structures=False, structures_list=None):
+    # 1. Constructs Map
+    try:
+        lib_num = job.get('which_lib')
+    except AttributeError:
+        lib_num = 1
+    prefix = f"Lib{lib_num}-" if lib_num else 'Lib1-'
+    
+    constructs_clean = ""
+    if 'constructs' in job._data:
+        constructs_text = job._data['constructs'].echo(prefix)
+        constructs_clean = strip_ansi(constructs_text)
+        
+    # 2. Assembly Map
+    assembly_clean = ""
+    if 'assembly' in job._data:
+        assembly_lines = job._data['assembly'].echo()
+        assembly_lines += '\nPRIMERS             LENGTH    \tSEQUENCE\n'
+        for i, primer in enumerate(job.primer_set):
+            suffix = ' R' if i % 2 else ' F'
+            name_str = f"{job.name}-{i+1}{suffix}"
+            assembly_lines += f"{name_str.ljust(39)}{str(len(primer)).ljust(10)}{primer}\n"
+        assembly_clean = strip_ansi(assembly_lines)
+        
+    # 3. Structures Map (Optional)
+    structures_clean = ""
+    if include_structures and structures_list:
+        lines = list(structures_list)
+        if 'warnings' in job._data and job._data['warnings']:
+            lines.extend(['', 'WARNINGS:', ''])
+            try:
+                offset = job.get('offset')
+            except AttributeError:
+                offset = 0
+            seq = job.sequence
+            for pair in job._data['warnings']:
+                lines.append(f"Mismatch in base-pair between {seq[pair[0] - 1]}{pair[0] - offset} and {seq[pair[1] - 1]}{pair[1] - offset}.")
+        structures_clean = '\n'.join(lines)
+        
+    return constructs_clean, assembly_clean, structures_clean
 
 # Helper function to convert ansi to HTML for Streamlit rendering
 from ansi2html import Ansi2HTMLConverter
@@ -177,14 +222,18 @@ with tab1:
     raw_seq = st.text_area("Target Sequence (DNA or RNA)", placeholder="PASTE YOUR SEQUENCE HERE...", height=180, key="t1_seq")
     
     if st.button("Generate Baseline 1D Assembly", type="primary", key="btn_1d"):
-        cleaned_seq = "".join(raw_seq.split()).upper().replace('U', 'T')
+        st.session_state['run_1d'] = True
+        st.session_state['raw_seq_1d'] = raw_seq
+        
+    if st.session_state.get('run_1d', False):
+        cleaned_seq = "".join(st.session_state['raw_seq_1d'].split()).upper().replace('U', 'T')
         
         if not cleaned_seq:
             st.error("Submission Failure: The sequence text boundary cannot be blank.")
         elif len(cleaned_seq) > 350:
             st.error(f"Length Alert: The sequence is {len(cleaned_seq)} nt long. To keep free tier execution fast and stable, sequences are limited to 350 nt.")
         else:
-            with st.spinner("Calculating optimal primer boundaries via dynamic programming..."):
+            with st.spinner("Calculating optimal primer boundaries..."):
                 try:
                     job_1d = cached_design_1d(cleaned_seq, sb_min_tm, sb_num_primers, sb_min_len, sb_max_len, sb_prefix)
                     
@@ -200,8 +249,8 @@ with tab1:
                         st.dataframe(pd.DataFrame(primer_records), width="stretch")
                         
                         # Generate the IDT Order Capture Form Output
-                        st.subheader("IDT Bulk Entry Block")
-                        st.caption("Copy the text block below and paste it directly into the IDT Bulk Input portal. Select 'Lab Ready' for normalization.")
+                        st.subheader("Full Backend Log")
+                        st.caption("Raw output engine execution log.")
                         
                         # Safely trap native output print strings
                         buffer = io.StringIO()
@@ -221,6 +270,27 @@ with tab1:
                         st.markdown("<br>", unsafe_allow_html=True)
                             
                         st.download_button("Download Design Matrix Text File", data=strip_ansi(output_text), file_name=f"{job_1d.name}_1D_design.txt")
+                        
+                        st.write("---")
+                        st.subheader("IDT Bulk Ordering Block")
+                        st.info("Copy the text block below and paste it directly into the IDT Bulk Input portal. Select 'Lab Ready' for normalization.")
+                        
+                        idt_lines = [
+                            '#',
+                            '',
+                            '------/* IDT USER: for primer ordering, copy and paste to Bulk Input */------',
+                            '------/* START */------'
+                        ]
+                        for i in range(len(job_1d.primer_set)):
+                            suffix = 'FR'[i % 2]
+                            idt_lines.append(f'{job_1d.name}-{i + 1}{suffix}\t{job_1d.primer_set[i]}\t\t25nm\tSTD')
+                        idt_lines.extend([
+                            '------/* END */------',
+                            '------/* NOTE: use "Lab Ready" for "Normalization" */------'
+                        ])
+                        idt_text = '\n'.join(idt_lines)
+                        st.code(idt_text, language='text')
+                        
                     else:
                         st.error("Error: Primerize Engine Failure. No valid primer boundaries could be evaluated under these parameters.")
                 except Exception as e:
@@ -248,6 +318,11 @@ with tab2:
         t2_lib = st.selectbox("Target Library Assembly Strategy (which_lib)", options=[1, 2, 3], index=0)
         
         if st.button("Generate 2D Mapping Library", type="primary"):
+            st.session_state['run_2d'] = True
+            st.session_state['t2_inputs'] = (t2_offset, t2_min_mut, t2_max_mut, t2_lib)
+            
+        if st.session_state.get('run_2d', False):
+            t2_offset, t2_min_mut, t2_max_mut, t2_lib = st.session_state['t2_inputs']
             with st.spinner("Processing mutation sequence matrices..."):
                 try:
                     job_2d = cached_design_2d(baseline, t2_offset, t2_min_mut, t2_max_mut, t2_lib)
@@ -270,7 +345,31 @@ with tab2:
                         )
                         st.markdown("<br>", unsafe_allow_html=True)
                         
-                        st.download_button("Download 2D Plate Specification File", data=strip_ansi(output_text_2d), file_name=f"{st.session_state['active_job_1d'].name}_2D_library.txt")
+                        col_dl1, col_dl2 = st.columns(2)
+                        with col_dl1:
+                            st.download_button("Download 2D Plate Specification File (.txt)", data=strip_ansi(output_text_2d), file_name=f"{st.session_state['active_job_1d'].name}_2D_library.txt")
+                            
+                        with col_dl2:
+                            import glob
+                            # Generate and serve the Excel file
+                            xls_name = f"{st.session_state['active_job_1d'].name}_2D_library"
+                            job_2d.save('table', path='.', name=xls_name)
+                            xls_files = glob.glob(f"{xls_name}_plate_*.xls")
+                            for i, xls_path in enumerate(xls_files):
+                                with open(xls_path, "rb") as f:
+                                    xls_data = f.read()
+                                st.download_button(f"Download Plate {i+1} (.xls)", data=xls_data, file_name=xls_path, mime="application/vnd.ms-excel", key=f"dl_2d_{i}")
+                                os.remove(xls_path) # Cleanup
+                                
+                        with st.expander("Supplementary Data Files"):
+                            st.caption("Supplementary output files for downstream analysis and sequence alignment pipelines.")
+                            c1, c2, c3 = st.columns(3)
+                            constructs_txt, assembly_txt, _ = generate_advanced_files(job_2d)
+                            with c1:
+                                st.download_button("Download Constructs Map (.txt)", data=constructs_txt, file_name=f"{job_2d.name}_constructs.txt", key="t2_dl_const")
+                            with c2:
+                                st.download_button("Download Assembly DNA (.txt)", data=assembly_txt, file_name=f"{job_2d.name}_assembly.txt", key="t2_dl_assem")
+                                
                     else:
                         st.error("Error: 2D Processing Failure. No valid plate layout found for this specific mutation range.")
                 except Exception as e:
@@ -314,7 +413,11 @@ with tab3:
         
         # 3. RUN PIPELINE TRIGGER BUTTON
         if st.button("Generate 3D Mutation Design", type="primary", key="btn_3d"):
-            cleaned_struct = "".join(struct_3d.split())
+            st.session_state['run_3d'] = True
+            st.session_state['t3_struct'] = struct_3d
+            
+        if st.session_state.get('run_3d', False):
+            cleaned_struct = "".join(st.session_state['t3_struct'].split())
             
             # --- VALIDATION LAYER ---
             if not cleaned_struct:
@@ -375,12 +478,39 @@ with tab3:
                             )
                             st.markdown("<br>", unsafe_allow_html=True)
                             
-                            # Download Button for the raw file output
-                            st.download_button(
-                                label="Download 3D Design Matrix Text File", 
-                                data=strip_ansi(output_text_3d), 
-                                file_name=f"{job_1d.name}_3D_structural_design.txt"
-                            )
+                            st.markdown("<br>", unsafe_allow_html=True)
+                            
+                            col_dl1, col_dl2 = st.columns(2)
+                            with col_dl1:
+                                st.download_button(
+                                    "Download 3D Design Matrix (.txt)", 
+                                    data=strip_ansi(output_text_3d), 
+                                    file_name=f"{job_1d.name}_3D_structural_design.txt"
+                                )
+                                
+                            with col_dl2:
+                                import glob
+                                # Generate and serve the Excel file
+                                xls_name = f"{job_1d.name}_3D_structural_design"
+                                job_3d.save('table', path='.', name=xls_name)
+                                xls_files = glob.glob(f"{xls_name}_plate_*.xls")
+                                for i, xls_path in enumerate(xls_files):
+                                    with open(xls_path, "rb") as f:
+                                        xls_data = f.read()
+                                    st.download_button(f"Download Plate {i+1} (.xls)", data=xls_data, file_name=xls_path, mime="application/vnd.ms-excel", key=f"dl_3d_{i}")
+                                    os.remove(xls_path) # Cleanup
+                                    
+                            with st.expander("Supplementary Data Files"):
+                                st.caption("Supplementary output files for downstream analysis and sequence alignment pipelines.")
+                                c1, c2, c3 = st.columns(3)
+                                constructs_txt, assembly_txt, structs_txt = generate_advanced_files(job_3d, include_structures=True, structures_list=[cleaned_struct])
+                                with c1:
+                                    st.download_button("Download Constructs Map (.txt)", data=constructs_txt, file_name=f"{job_3d.name}_constructs.txt", key="t3_dl_const")
+                                with c2:
+                                    st.download_button("Download Assembly DNA (.txt)", data=assembly_txt, file_name=f"{job_3d.name}_assembly.txt", key="t3_dl_assem")
+                                with c3:
+                                    st.download_button("Download Structures Map (.txt)", data=structs_txt, file_name=f"{job_3d.name}_structures.txt", key="t3_dl_struct")
+                                    
                         else:
                             st.error("Error: Primerize Engine Failure. No valid primer combinations could satisfy the 3D folding constraints.")
                             
@@ -397,6 +527,11 @@ with tab4:
         custom_mut_input = st.text_input("Explicit Targeted Mutants List", value="T120C, G119A;T120C", help="Separate variants using commas, semicolons, or whitespace blocks.")
         
         if st.button("Compile Tailored Custom Plate Layout", type="primary"):
+            st.session_state['run_4d'] = True
+            st.session_state['t4_inputs'] = (t4_offset, custom_mut_input)
+            
+        if st.session_state.get('run_4d', False):
+            t4_offset, custom_mut_input = st.session_state['t4_inputs']
             with st.spinner("Assembling structural mutant mapping arrays..."):
                 try:
                     job_custom, error_log = cached_design_custom(st.session_state['active_job_1d'], t4_offset, custom_mut_input)
@@ -414,7 +549,32 @@ with tab4:
                             unsafe_allow_html=True
                         )
                         st.markdown("<br>", unsafe_allow_html=True)
-                        st.download_button("Download Custom Plate Specification File", data=strip_ansi(output_text_custom), file_name=f"{st.session_state['active_job_1d'].name}_custom_plate.txt")
+                        
+                        col_dl1, col_dl2 = st.columns(2)
+                        with col_dl1:
+                            st.download_button("Download Custom Plate Specification File (.txt)", data=strip_ansi(output_text_custom), file_name=f"{st.session_state['active_job_1d'].name}_custom_plate.txt")
+                            
+                        with col_dl2:
+                            import glob
+                            # Generate and serve the Excel file
+                            xls_name = f"{st.session_state['active_job_1d'].name}_custom"
+                            job_custom.save('table', path='.', name=xls_name)
+                            xls_files = glob.glob(f"{xls_name}_plate_*.xls")
+                            for i, xls_path in enumerate(xls_files):
+                                with open(xls_path, "rb") as f:
+                                    xls_data = f.read()
+                                st.download_button(f"Download Plate {i+1} (.xls)", data=xls_data, file_name=xls_path, mime="application/vnd.ms-excel", key=f"dl_4d_{i}")
+                                os.remove(xls_path) # Cleanup
+                                
+                        with st.expander("Supplementary Data Files"):
+                            st.caption("Supplementary output files for downstream analysis and sequence alignment pipelines.")
+                            c1, c2, c3 = st.columns(3)
+                            constructs_txt, assembly_txt, _ = generate_advanced_files(job_custom)
+                            with c1:
+                                st.download_button("Download Constructs Map (.txt)", data=constructs_txt, file_name=f"{job_custom.name}_constructs.txt", key="t4_dl_const")
+                            with c2:
+                                st.download_button("Download Assembly DNA (.txt)", data=assembly_txt, file_name=f"{job_custom.name}_assembly.txt", key="t4_dl_assem")
+                                
                     else:
                         clean_err = strip_ansi(error_log).strip()
                         # Extract the specific ValueError message for a cleaner non-technical UX
