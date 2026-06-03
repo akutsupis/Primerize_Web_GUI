@@ -102,9 +102,7 @@ st.markdown(
     """
     **Primerize (previously named NA_thermo)** is a Python package for primer design and nucleic acid thermodynamics, developed by the Das Lab at Stanford University for high-throughput RNA synthesis and design.
 
-    Given a desired DNA template sequence, Primerize uses a dynamic programming-based algorithm to design primers optimized for PCR assembly into templates for high-throughput RNA synthesis. The algorithm minimizes mispriming during PCR by avoiding primer boundaries that might anneal to incorrect sequences.
-    
-    *Note: The original Primerize web server was decommissioned in May 2026. This website provides a graphical interface to the native Python backend.*
+    *The original Primerize web server was decommissioned in May 2026. This website provides a graphical interface to the native Python backend.*
     """
 )
 st.write("---")
