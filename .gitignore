@@ -1,0 +1,24 @@
+# Environments
+.venv/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Streamlit config (optional to ignore, but usually safe to commit unless it has secrets)
+# .streamlit/
+
+# OS generated files
+.DS_Store
+Thumbs.db
