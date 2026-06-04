@@ -60,6 +60,7 @@ with col2:
 st.sidebar.markdown("<br>", unsafe_allow_html=True)
 st.sidebar.header("Baseline 1D Parameters")
 sb_prefix = st.sidebar.text_input("Construct Prefix/Name", value="my_rna_construct")
+sb_t7_check = st.sidebar.checkbox("Check for T7 promoter sequence", value=True)
 sb_min_tm = st.sidebar.slider("Minimum Overlap Tm (°C)", min_value=45.0, max_value=85.0, value=60.0, step=0.5)
 
 sb_limit_primers = st.sidebar.checkbox("Enforce Exact Primer Count Limit", value=False)
@@ -85,7 +86,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 
 # Route execution to modularized components
 with tab1:
-    tab1_baseline.render(sb_prefix, sb_min_tm, sb_num_primers, sb_min_len, sb_max_len)
+    tab1_baseline.render(sb_prefix, sb_t7_check, sb_min_tm, sb_num_primers, sb_min_len, sb_max_len)
 
 with tab2:
     tab2_mapping.render()

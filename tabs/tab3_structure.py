@@ -73,8 +73,23 @@ def render():
                             st.success("3D Structural Synthesis Optimization Completed.")
                             
                             st.subheader("Structural Mutation Assembly Primers")
-                            primer_records_3d = [{"Primer Index": i + 1, "Oligo Sequence (5' → 3')": s} for i, s in enumerate(job_3d.primer_set)]
-                            st.dataframe(pd.DataFrame(primer_records_3d), width="stretch")
+                            
+                            hcol1, hcol2, hcol3 = st.columns([1, 1, 8])
+                            with hcol1: st.markdown("**#**")
+                            with hcol2: st.markdown("**Length**")
+                            with hcol3: st.markdown("**Sequence** (Hover and click the icon to copy)")
+                            st.markdown("---")
+                            
+                            for i, primer in enumerate(job_3d.primer_set):
+                                col1, col2, col3 = st.columns([1, 1, 8])
+                                with col1:
+                                    badge = "F" if i % 2 == 0 else "R"
+                                    color = "#00bcd4" if badge == "F" else "#ff5722"
+                                    st.markdown(f"<span style='background-color:{color}; color:white; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-family: monospace;'>{i+1} [{badge}]</span>", unsafe_allow_html=True)
+                                with col2:
+                                    st.markdown(f"**{len(primer)}**")
+                                with col3:
+                                    st.code(primer, language="text")
                             
                             buffer_3d = io.StringIO()
                             sys.stdout = buffer_3d
