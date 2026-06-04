@@ -4,8 +4,10 @@ import sys
 import os
 import glob
 import pandas as pd
+import io
+import sys
 import primerize
-from utils import convert_ansi_to_html, strip_ansi, generate_advanced_files
+from utils import cached_design_3d, convert_ansi_to_html, strip_ansi, generate_advanced_files
 
 def render():
     st.header("3D Structure Mutations")
@@ -58,15 +60,14 @@ def render():
             else:
                 with st.spinner("Calculating 3D structure-guided mutations and primer boundaries..."):
                     try:
-                        prm_3d = primerize.Primerize_3D
-                        prm_3d.reset()
-                        prm_3d.set('prefix', str(job_1d.name))
-                        
-                        job_3d = prm_3d.design(
-                            sequence=job_1d.sequence,
-                            primer_set=job_1d.primer_set,
-                            structures=[cleaned_struct],
-                            prefix=str(job_1d.name)
+                        job_3d, plates_data, zip_bytes = cached_design_3d(
+                            _job_1d=job_1d, 
+                            offset=0, 
+                            structures=[cleaned_struct], 
+                            n_mutations=2, 
+                            which_lib=1, 
+                            is_single=True, 
+                            is_fillwt=True
                         )
                         
                         if job_3d.is_success:
@@ -82,6 +83,7 @@ def render():
                             
                             for i, primer in enumerate(job_3d.primer_set):
                                 col1, col2, col3 = st.columns([1, 1, 8])
+                                
                                 with col1:
                                     badge = "F" if i % 2 == 0 else "R"
                                     color = "#00bcd4" if badge == "F" else "#ff5722"
@@ -134,6 +136,20 @@ def render():
                                     st.download_button("Download Assembly DNA (.txt)", data=assembly_txt, file_name=f"{job_3d.name}_assembly.txt", key="t3_dl_assem")
                                 with c3:
                                     st.download_button("Download Structures Map (.txt)", data=structs_txt, file_name=f"{job_3d.name}_structures.txt", key="t3_dl_struct")
+                                    
+                            # 8. Visual Plate Layouts
+                            if plates_data:
+                                st.write("---")
+                                st.subheader("Plate Layout")
+                                
+                                cols = st.columns(4)
+                                for idx, p_data in enumerate(plates_data):
+                                    with cols[idx % 4]:
+                                        st.markdown(f"<p style='text-align: center; font-weight: bold;'>{p_data['primer_name']}</p>", unsafe_allow_html=True)
+                                        st.markdown(p_data['svg_string'], unsafe_allow_html=True)
+                                        
+                                st.markdown("<br>", unsafe_allow_html=True)
+                                st.download_button("Download Plate Graphics (ZIP)", data=zip_bytes, file_name=f"{job_3d.name}_plates.zip", mime="application/zip", key="t3_dl_plates_zip")
                                     
                         else:
                             st.error("Error: Primerize Engine Failure. No valid primer combinations could satisfy the 3D folding constraints.")

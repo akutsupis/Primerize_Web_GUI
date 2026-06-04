@@ -3,9 +3,14 @@ import threading
 import io
 import re
 import sys
+import zipfile
 from contextlib import redirect_stdout
 from ansi2html import Ansi2HTMLConverter
 import primerize
+
+# Pre-configure matplotlib for headless server-side rendering
+import matplotlib
+matplotlib.use('Agg')
 
 # Global thread lock to prevent Singleton race conditions in the primerize backend
 primerize_lock = threading.Lock()
@@ -96,12 +101,13 @@ def cached_design_1d(seq, min_tm, num_primers, min_len, max_len, prefix):
 def cached_design_2d(_job_1d, offset, min_mut, max_mut, which_lib):
     mut_range = list(range(int(min_mut), int(max_mut) + 1))
     with primerize_lock:
-        return primerize.Primerize_2D.design(_job_1d, offset=int(offset), which_muts=mut_range, which_lib=int(which_lib))
+        job = primerize.Primerize_2D.design(_job_1d, offset=int(offset), which_muts=mut_range, which_lib=int(which_lib))
+    return job, *generate_plate_svgs(job)
 
 @st.cache_data(max_entries=64, ttl=1800)
 def cached_design_3d(_job_1d, offset, structures, n_mutations, which_lib, is_single, is_fillwt):
     with primerize_lock:
-        return primerize.Primerize_3D.design(
+        job = primerize.Primerize_3D.design(
             _job_1d, 
             offset=int(offset), 
             structures=structures, 
@@ -110,6 +116,7 @@ def cached_design_3d(_job_1d, offset, structures, n_mutations, which_lib, is_sin
             is_single=is_single, 
             is_fillWT=is_fillwt
         )
+    return job, *generate_plate_svgs(job)
 
 @st.cache_data(max_entries=64, ttl=1800)
 def cached_design_custom(_job_1d, offset, raw_mutation_string):
@@ -122,4 +129,30 @@ def cached_design_custom(_job_1d, offset, raw_mutation_string):
         with redirect_stdout(f):
             job = primerize.Primerize_Custom.design(_job_1d, offset=int(offset), mut_list=mut_list)
             
-    return job, f.getvalue()
+    return job, f.getvalue(), *generate_plate_svgs(job)
+
+def generate_plate_svgs(job, ref_primer=''):
+    """Generates SVGs of 96-well plate layouts and zips them in memory."""
+    plates_data = [] 
+    zip_buffer = io.BytesIO()
+    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for p_idx, primer_row in enumerate(job._data.get('plates', [])):
+            for pl_idx, plate in enumerate(primer_row):
+                if not plate: continue # Skip empty plates
+                
+                suffix = ' R' if p_idx % 2 else ' F'
+                p_name, pl_name = f"Primer {p_idx + 1}{suffix}", f"Plate {pl_idx + 1}"
+                fname = f"Primer_{p_idx + 1}{suffix.replace(' ', '')}_Plate_{pl_idx + 1}.svg"
+                
+                # Generate SVG in memory
+                buf = io.BytesIO()
+                plate.save(ref_primer=ref_primer, file_name=buf, title=f"{p_name} | {pl_name}")
+                
+                # Instantly strip hardcoded dimensions for responsive Streamlit rendering
+                svg = re.sub(r'(width|height)="[^"]+"', r'\1="100%"', buf.getvalue().decode('utf-8'), count=2)
+                
+                plates_data.append({"primer_name": p_name, "plate_name": pl_name, "svg_string": svg})
+                zf.writestr(fname, svg)
+                    
+    return plates_data, zip_buffer.getvalue()

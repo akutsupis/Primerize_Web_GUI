@@ -4,7 +4,7 @@ import sys
 import os
 import glob
 import re
-from utils import cached_design_custom, convert_ansi_to_html, strip_ansi, generate_advanced_files
+from utils import cached_design_custom, convert_ansi_to_html, strip_ansi, generate_advanced_files, generate_plate_svgs
 
 def render():
     st.header("Custom Targeted Expression Library Controls")
@@ -22,7 +22,7 @@ def render():
             t4_offset, custom_mut_input = st.session_state['t4_inputs']
             with st.spinner("Assembling structural mutant mapping arrays..."):
                 try:
-                    job_custom, error_log = cached_design_custom(st.session_state['active_job_1d'], t4_offset, custom_mut_input)
+                    job_custom, error_log, plates_data, zip_bytes = cached_design_custom(st.session_state['active_job_1d'], t4_offset, custom_mut_input)
                     if job_custom.is_success:
                         st.success("Custom Target Variant Mapping Completed.")
                         buf = io.StringIO()
@@ -60,6 +60,17 @@ def render():
                                 st.download_button("Download Constructs Map (.txt)", data=constructs_txt, file_name=f"{job_custom.name}_constructs.txt", key="t4_dl_const")
                             with c2:
                                 st.download_button("Download Assembly DNA (.txt)", data=assembly_txt, file_name=f"{job_custom.name}_assembly.txt", key="t4_dl_assem")
+
+                        if plates_data:
+                            st.write("---")
+                            st.subheader("Plate Layout")
+                            cols = st.columns(4)
+                            for idx, p_data in enumerate(plates_data):
+                                with cols[idx % 4]:
+                                    st.markdown(f"<p style='text-align: center; font-weight: bold;'>{p_data['plate_name']}</p>", unsafe_allow_html=True)
+                                    st.markdown(p_data['svg_string'], unsafe_allow_html=True)
+                            st.markdown("<br>", unsafe_allow_html=True)
+                            st.download_button("Download Plate Graphics (ZIP)", data=zip_bytes, file_name=f"{job_custom.name}_plates.zip", mime="application/zip", key="t4_dl_plates_zip")
                                 
                     else:
                         clean_err = strip_ansi(error_log).strip()

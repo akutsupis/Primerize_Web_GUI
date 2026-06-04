@@ -3,7 +3,7 @@ import io
 import sys
 import os
 import glob
-from utils import cached_design_2d, convert_ansi_to_html, strip_ansi, generate_advanced_files
+from utils import cached_design_2d, convert_ansi_to_html, strip_ansi, generate_advanced_files, generate_plate_svgs
 
 def render():
     st.header("Automated High-Throughput Mutagenesis (2D Libraries)")
@@ -33,7 +33,7 @@ def render():
             t2_offset, t2_min_mut, t2_max_mut, t2_lib = st.session_state['t2_inputs']
             with st.spinner("Processing mutation sequence matrices..."):
                 try:
-                    job_2d = cached_design_2d(baseline, t2_offset, t2_min_mut, t2_max_mut, t2_lib)
+                    job_2d, plates_data, zip_bytes = cached_design_2d(st.session_state['active_job_1d'], t2_offset, t2_min_mut, t2_max_mut, t2_lib)
                     if job_2d.is_success:
                         st.success("2D Plate Mapping Arrays Generated Successfully.")
                         
@@ -73,6 +73,17 @@ def render():
                                 st.download_button("Download Constructs Map (.txt)", data=constructs_txt, file_name=f"{job_2d.name}_constructs.txt", key="t2_dl_const")
                             with c2:
                                 st.download_button("Download Assembly DNA (.txt)", data=assembly_txt, file_name=f"{job_2d.name}_assembly.txt", key="t2_dl_assem")
+
+                        if plates_data:
+                            st.write("---")
+                            st.subheader("Plate Layout")
+                            cols = st.columns(4)
+                            for idx, p_data in enumerate(plates_data):
+                                with cols[idx % 4]:
+                                    st.markdown(f"<p style='text-align: center; font-weight: bold;'>{p_data['primer_name']}</p>", unsafe_allow_html=True)
+                                    st.markdown(p_data['svg_string'], unsafe_allow_html=True)
+                            st.markdown("<br>", unsafe_allow_html=True)
+                            st.download_button("Download Plate Graphics (ZIP)", data=zip_bytes, file_name=f"{job_2d.name}_plates.zip", mime="application/zip", key="t2_dl_plates_zip")
                                 
                     else:
                         st.error("Error: 2D Processing Failure. No valid plate layout found for this specific mutation range.")
