@@ -13,7 +13,7 @@ from tabs import tab5_protocols
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="Primerize",
-    page_icon="🧪",
+    page_icon="🧬",
     layout="wide",
     initial_sidebar_state="expanded"
 )
