@@ -39,11 +39,11 @@ st.markdown(
 # -----------------------------------------------------------------------------
 st.markdown(
     """
-    **Primerize Web** is an independent, unofficial web interface for the Primerize Python package for primer design and nucleic acid thermodynamics, developed by the Das Lab at Stanford University for high-throughput RNA synthesis and design.
+**Primerize Web** is an independent, unofficial web interface for the Primerize Python package for primer design and nucleic acid thermodynamics, developed by the Das Lab at Stanford University for high-throughput RNA synthesis and design.
 
 *The original Primerize web server was decommissioned in May 2026. This site is not affiliated with or endorsed by the Das Lab or Stanford University.*
     
-    **[Official Primerize Documentation & Tutorials](https://ribokit.github.io/Primerize/)**
+**[Official Primerize Documentation & Tutorials](https://ribokit.github.io/Primerize/)**
     """
 )
 st.write("---")
