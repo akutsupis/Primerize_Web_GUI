@@ -39,16 +39,13 @@ st.markdown(
 # -----------------------------------------------------------------------------
 st.markdown(
     """
-    **Primerize Web** is a web application built on the **Primerize** Python package for primer design and nucleic acid thermodynamics, developed by the Das Lab at Stanford University for high-throughput RNA synthesis and design.
+    ### **Primerize Web**
+
+    A no-code web interface for the [Primerize](https://primerize.stanford.edu/) Python package. Run Primerize algorithms directly from your browser to design primers for simple 1D assembly, 2D chemical mapping libraries, 3D structure-guided mutations, and more.
     
-    This website lets you run the Primerize algorithms without writing code. You can design primers for simple 1D assembly, 2D chemical mapping libraries, and 3D structure-guided mutations, and more!
-    
-    *This website is not affiliated with the official Primerize web server, Stanford University, or the Das Lab.*
-    
-    **[Official Primerize Documentation & Tutorials](https://ribokit.github.io/Primerize/)**
+    *Primerize was developed by the Das Lab at Stanford University. This application is an independent project and is not affiliated with the official Primerize web server, Stanford University, or the Das Lab.*
     """
 )
-st.write("---")
 
 # -----------------------------------------------------------------------------
 # SIDEBAR PARAMETER SELECTION ENGINE (Shared Baseline Rules)

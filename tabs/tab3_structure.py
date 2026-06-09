@@ -78,7 +78,7 @@ def render():
                             hcol1, hcol2, hcol3 = st.columns([1, 1, 8])
                             with hcol1: st.markdown("**#**")
                             with hcol2: st.markdown("**Length**")
-                            with hcol3: st.markdown("**Sequence** (Hover and click the icon to copy)")
+                            with hcol3: st.markdown("**Sequence** (To copy, hover over a row and click the icon on the far right)")
                             st.markdown("---")
                             
                             for i, primer in enumerate(job_3d.primer_set):
