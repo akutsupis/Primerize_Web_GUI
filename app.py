@@ -39,11 +39,13 @@ st.markdown(
 # -----------------------------------------------------------------------------
 st.markdown(
     """
-**Primerize Web** is an independent, unofficial web interface for the Primerize Python package for primer design and nucleic acid thermodynamics, developed by the Das Lab at Stanford University for high-throughput RNA synthesis and design.
-
-*The original Primerize web server was decommissioned in May 2026. This site is not affiliated with or endorsed by the Das Lab or Stanford University.*
+    **Primerize Web** is a web application built on the **Primerize** Python package for primer design and nucleic acid thermodynamics, developed by the Das Lab at Stanford University for high-throughput RNA synthesis and design.
     
-**[Official Primerize Documentation & Tutorials](https://ribokit.github.io/Primerize/)**
+    This website lets you run the Primerize algorithms without writing code. You can design primers for simple 1D assembly, 2D chemical mapping libraries, and 3D structure-guided mutations, and more!
+    
+    *This website is not affiliated with the official Primerize web server, Stanford University, or the Das Lab.*
+    
+    **[Official Primerize Documentation & Tutorials](https://ribokit.github.io/Primerize/)**
     """
 )
 st.write("---")
@@ -108,12 +110,28 @@ with st.expander("Academic Citation Acknowledgments"):
         **This project is distributed under the MIT license.**
 
         Please cite the use of Primerize with the following foundational publications:
-        - **Primerize-2D:** Tian, S., and Das, R. (2017) [Automated primer design for RNA multidimensional chemical mapping](https://academic.oup.com/bioinformatics/article-abstract/33/9/1405/2801460/Primerize-2D-automated-primer-design-for-RNA). *Bioinformatics* 33(9): 1405-1406.
-        - **Primerize:** Tian, S., Yesselman, J.D., Cordero, P., and Das, R. (2015) [Primerize: automated primer assembly for transcribing interesting RNAs](http://nar.oxfordjournals.org/content/43/W1/W522). *Nucleic Acids Research* 43(W1): W522-W526.
+        - **Primerize-2D:** Tian, S., and Das, R. (2017) [Automated primer design for RNA multidimensional chemical mapping.](https://academic.oup.com/bioinformatics/article-abstract/33/9/1405/2801460/Primerize-2D-automated-primer-design-for-RNA) *Bioinformatics* 33(9): 1405-1406.
+        - **Primerize:** Tian, S., Yesselman, J.D., Cordero, P., and Das, R. (2015) [Primerize: automated primer assembly for transcribing interesting RNAs.](http://nar.oxfordjournals.org/content/43/W1/W522) *Nucleic Acids Research* 43(W1): W522-W526.
 
         **Related Publications on the Mutate-Map-Rescue Pipeline:**
-        - Tian, S., and Das, R. (2016) RNA structure through multidimensional chemical mapping. *Quarterly Review of Biophysics* 49(e7): 1-30.
-        - Tian, S., Cordero, P., Kladwang, W., and Das, R. (2014) High-throughput mutate-map-rescue evaluates SHAPE-directed RNA structure and uncovers excited states. *RNA* 20(11): 1815-1826.
-        - Kladwang, W., VanLang, C.C., Cordero P., and Das, R. (2011) A two-dimensional mutate-and-map strategy for non-coding RNA structure. *Nature Chemistry* 3: 954-962.
+        - Tian, S., and Das, R. (2016) [RNA structure through multidimensional chemical mapping.](http://journals.cambridge.org/action/displayAbstract?fromPage=online&aid=10242118&fulltextType=RV&fileId=S0033583516000020) *Quarterly Review of Biophysics* 49(e7): 1-30.
+        - Tian, S., Cordero, P., Kladwang, W., and Das, R. (2014) [High-throughput mutate-map-rescue evaluates SHAPE-directed RNA structure and uncovers excited states.](http://rnajournal.cshlp.org/content/20/11/1815) *RNA* 20(11): 1815-1826.
+        - Kladwang, W., VanLang, C.C., Cordero P., and Das, R. (2011) [A two-dimensional mutate-and-map strategy for non-coding RNA structure.](http://www.nature.com/nchem/journal/v3/n12/full/nchem.1176.html) *Nature Chemistry* 3: 954-962.
+        """
+    )
+
+# -----------------------------------------------------------------------------
+# ABOUT PANEL
+# -----------------------------------------------------------------------------
+with st.expander("About Primerize Web"):
+    st.markdown(
+        """
+        **This project is distributed under the MIT license.**
+
+        Feel free to open issues, suggest features, or contribute code to Primerize Web on the [GitHub repository](https://github.com/akutsupis/Primerize_Web).
+
+        Primerize Web is an independent project developed and released for free for the purposes of keeping the Primerize algorithms accessible to non-coding RNA researchers (and those who prefer a GUI and ease of use). It is not affiliated with the official Primerize web server, Stanford University, or the Das Lab.
+        
+        This project is hosted on the free tier of Streamlit Cloud. However, you can run this application locally on your own machine by cloning the repository and installing the required dependencies. Instructions for local deployment can be found in the README file on GitHub.
         """
     )
