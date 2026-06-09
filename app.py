@@ -27,6 +27,7 @@ st.markdown(
     }
     /* Enforce a permanent vertical scrollbar to prevent layout shifts on short tabs */
     html {
+    html, body, [data-testid="stAppViewContainer"], .stApp {
         overflow-y: scroll !important;
     }
     </style>
